@@ -1,0 +1,45 @@
+make[1]: Entering directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make/amplitools.usearch.makefile.02.d'
+sina -i amplitools.usearch.makefile.02.100.otuseeds.fasta \
+	  -o amplitools.usearch.makefile.02.100.otuseeds.silva_ssuref.arb \
+	  --ptdb /proj/b2010008/nobackup/data/silva/SSURef.arb \
+	  --search \
+	  --search-db /proj/b2010008/nobackup/data/silva/SSURef.arb \
+	  --lca-fields tax_slv \
+	  --log-file amplitools.usearch.makefile.02.100.otuseeds.silva_ssuref.sinalog
+killall arb_pt_server
+sina -i amplitools.usearch.makefile.02.98.otuseeds.fasta \
+	  -o amplitools.usearch.makefile.02.98.otuseeds.silva_ssuref.arb \
+	  --ptdb /proj/b2010008/nobackup/data/silva/SSURef.arb \
+	  --search \
+	  --search-db /proj/b2010008/nobackup/data/silva/SSURef.arb \
+	  --lca-fields tax_slv \
+	  --log-file amplitools.usearch.makefile.02.98.otuseeds.silva_ssuref.sinalog
+killall arb_pt_server
+sina -i amplitools.usearch.makefile.02.99.otuseeds.fasta \
+	  -o amplitools.usearch.makefile.02.99.otuseeds.silva_ssuref.arb \
+	  --ptdb /proj/b2010008/nobackup/data/silva/SSURef.arb \
+	  --search \
+	  --search-db /proj/b2010008/nobackup/data/silva/SSURef.arb \
+	  --lca-fields tax_slv \
+	  --log-file amplitools.usearch.makefile.02.99.otuseeds.silva_ssuref.sinalog
+killall arb_pt_server
+make[1]: Leaving directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make/amplitools.usearch.makefile.02.d'
+make[1]: Entering directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make/amplitools.usearch.makefile.02.d'
+make[1]: Leaving directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make/amplitools.usearch.makefile.02.d'
+#!/bin/bash -l
+#SBATCH -N 1 -n 1
+#SBATCH -t 10-00:00:00
+#SBATCH -J test-all_silvas
+#SBATCH -A 
+#SBATCH -p core
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=your.email@address.se
+#__EXTRA_SBATCH_OPT__
+echo "-------------------------------------------------------------------------"
+echo "`date`: Starting job test-all_silvas"
+module load intel openmpi blast
+export LC_ALL=C
+make all_silvas
+rc=$?
+echo "`date`: Done test-all_silvas, rc: $rc"
+exit $rc

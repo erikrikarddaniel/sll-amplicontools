@@ -10,16 +10,17 @@ clean:
 amplitools.usearch.makefile: amplitools.usearch.makefile.00 amplitools.usearch.makefile.01 amplitools.usearch.makefile.02
 
 amplitools.usearch.makefile.00:
-	@make -f $@.makefile -n create_links > $@.out
-	@make -f $@.makefile -n $@.uc >> $@.out
-	@make -f $@.makefile -n all_otuseeds >> $@.out
-	@make -f $@.makefile $@.uc.sbatch && cat $@.uc.sbatch >> $@.out && rm $@.uc.sbatch
-	@$(CHECK)
+	@cd $@.d; make -f $@.makefile -n create_links > $@.out
+	@cd $@.d; make -f $@.makefile -n $@.uc >> $@.out
+	@cd $@.d; make -f $@.makefile -n all_otuseeds >> $@.out
+	@cd $@.d; make -f $@.makefile $@.uc.sbatch >> $@.out && cat $@.uc.sbatch >> $@.out && rm $@.uc.sbatch
+	@cd $@.d; $(CHECK)
 
 amplitools.usearch.makefile.01:
-	@make -f $@.makefile -n $@.otutables > $@.out
-	@$(CHECK)
+	@cd $@.d; make -f $@.makefile -n $@.otutables > $@.out
+	@cd $@.d; $(CHECK)
 
 amplitools.usearch.makefile.02:
-	@make -f $@.makefile -n all_silvas > $@.out
-	@$(CHECK)
+	@cd $@.d; make -f $@.makefile -n all_silvas > $@.out
+	@cd $@.d; make -f $@.makefile all_silvas.sbatch >> $@.out && cat all_silvas.sbatch >> $@.out && rm all_silvas.sbatch
+	@cd $@.d; $(CHECK)

@@ -4,7 +4,7 @@ CLUSTER_LEVELS = 1.00 0.99 0.98 0.97 0.96 0.95
 create_links:
 	ln -s ../*.perseus.fasta .
 
-all_otuseeds_fasta: $(subst .uc.fasta,.otuseeds.fasta,$(wildcard *.uc.fasta))
+all_otuseeds: $(subst .uc.,.otuseeds.,$(wildcard *.uc.fasta))
 
 # Uclust clustering
 %.sort.fasta: %.fasta
@@ -33,4 +33,4 @@ all_otuseeds_fasta: $(subst .uc.fasta,.otuseeds.fasta,$(wildcard *.uc.fasta))
 
 %.otuseeds.fasta: %.uc.fasta
 	n=`echo $<|awk -F. '{print $$(NF-2)}'`; \
-	awk "BEGIN { i=0 }  /^>/ { printf '>OTU$${n}_%06d\n', i++ } !/^>/ { print $$0 }" $< > $@
+	awk "BEGIN { i=0 }  /^>/ { printf \">OTU$${n}_%06d\n\", i++ } !/^>/ { print $$0 }" $< > $@
