@@ -4,7 +4,7 @@ for level in `cut -d " " -f 1 amplitools.usearch.makefile.01.otu.list`; do \
 	  percent=`echo "(1-$level) * 100"|bc -l|sed 's/\.00//'`; \
 	  outfile=amplitools.usearch.makefile.01.$percent.otutable; \
 	  echo ">>> Creating $outfile at the $level difference level <<<"; \
-	  ampliotus --format=freecsv --fields=otu,clusterlevel,counts --stripsuffixes=`echo amplitools.usearch.makefile.01.otu.list|awk -F. '{print "." $(NF-1) "." $NF }'` --difference=$level --listfile=amplitools.usearch.makefile.01.otu.list > $outfile; \
+	  ampliotus --format=freecsv --fields=otu,clusterlevel,counts --stripsuffixes=`echo sample3.perseus.fasta|awk -F. '{print "." $(NF-1) "." $NF }'` --difference=$level --listfile=amplitools.usearch.makefile.01.otu.list sample1.perseus.fasta sample2.perseus.fasta sample3.perseus.fasta > $outfile; \
 	done
 touch amplitools.usearch.makefile.01.otutables
 rm amplitools.usearch.makefile.01.otu.list

@@ -19,7 +19,7 @@ all_otuseeds: $(subst .uc.,.otuseeds.,$(wildcard *.uc.fasta))
 %.otu.list: $(wildcard *.uc)
 	uc2otulist $^ > $@
 
-%.otutables: %.otu.list $(filter-out all.,$(wildcard *.fasta))
+%.otutables: %.otu.list $(filter-out all.%,$(wildcard *.fasta))
 	@for level in `cut -d " " -f 1 $<`; do \
 	  percent=`echo "(1-$$level) * 100"|bc -l|sed 's/\.00//'`; \
 	  outfile=$(basename $@).$$percent.otutable; \
@@ -33,4 +33,4 @@ all_otuseeds: $(subst .uc.,.otuseeds.,$(wildcard *.uc.fasta))
 
 %.otuseeds.fasta: %.uc.fasta
 	n=`echo $<|awk -F. '{print $$(NF-2)}'`; \
-	awk "BEGIN { i=0 }  /^>/ { printf \">OTU$${n}_%06d\n\", i++ } !/^>/ { print $$0 }" $< > $@
+	awk "BEGIN { i=0 }  /^>/ { printf \">OTU$${n}_%06d\n\", i++ } !/^>/ { print $$1 }" $< > $@
