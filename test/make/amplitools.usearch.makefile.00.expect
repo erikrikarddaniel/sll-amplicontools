@@ -1,0 +1,32 @@
+make[1]: Entering directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make'
+ln -s ../*.perseus.fasta .
+make[1]: Leaving directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make'
+make[1]: Entering directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make'
+amplifastasort amplitools.usearch.makefile.00.fasta > amplitools.usearch.makefile.00.sort.fasta
+for n in 1.00 0.99 0.98 0.97 0.96 0.95; do \
+	  n=amplitools.usearch.makefile.00.`echo "$n * 100" | bc -l |sed 's/\..*//'`.uc; \
+	  usearch --usersort --cluster_smallmem amplitools.usearch.makefile.00.sort.fasta -id $n --uc $name --centroids $n.fasta; \
+	done
+rm amplitools.usearch.makefile.00.sort.fasta
+make[1]: Leaving directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make'
+make[1]: Entering directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make'
+n=`echo amplitools.usearch.makefile.00.97.uc.fasta|awk -F. '{print $(NF-2)}'`; \
+	awk "BEGIN { i=0 }  /^>/ { printf '>OTU${n}_%06d\n', i++ } !/^>/ { print $0 }" amplitools.usearch.makefile.00.97.uc.fasta > amplitools.usearch.makefile.00.97.otuseeds.fasta
+make[1]: Leaving directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make'
+#!/bin/bash -l
+#SBATCH -N 1 -n 1
+#SBATCH -t 10-00:00:00
+#SBATCH -J test-amplitools.usearch.makefile.00.uc
+#SBATCH -A 
+#SBATCH -p core
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=your.email@address.se
+#__EXTRA_SBATCH_OPT__
+echo "-------------------------------------------------------------------------"
+echo "`date`: Starting job test-amplitools.usearch.makefile.00.uc"
+module load intel openmpi blast
+export LC_ALL=C
+make amplitools.usearch.makefile.00.uc
+rc=$?
+echo "`date`: Done test-amplitools.usearch.makefile.00.uc, rc: $rc"
+exit $rc

@@ -1,9 +1,13 @@
 sessionname sll-amplicontools
 setenv PROJROOT $PWD
+chdir $PROJROOT/test/m4
+screen -t tm4
 chdir $PROJROOT/test/make
 screen -t tmake
 chdir $PROJROOT/test/scripts
 screen -t tscripts
+chdir $PROJROOT/lib/m4
+screen -t m4
 chdir $PROJROOT/lib/make
 screen -t make
 chdir $PROJROOT/scripts
