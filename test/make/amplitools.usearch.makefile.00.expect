@@ -11,7 +11,7 @@ rm amplitools.usearch.makefile.00.sort.fasta
 make[1]: Leaving directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make'
 make[1]: Entering directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make'
 n=`echo amplitools.usearch.makefile.00.97.uc.fasta|awk -F. '{print $(NF-2)}'`; \
-	awk "BEGIN { i=0 }  /^>/ { printf '>OTU${n}_%06d\n', i++ } !/^>/ { print $0 }" amplitools.usearch.makefile.00.97.uc.fasta > amplitools.usearch.makefile.00.97.otuseeds.fasta
+	awk "BEGIN { i=0 }  /^>/ { printf \">OTU${n}_%06d\n\", i++ } !/^>/ { print $0 }" amplitools.usearch.makefile.00.97.uc.fasta > amplitools.usearch.makefile.00.97.otuseeds.fasta
 make[1]: Leaving directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make'
 #!/bin/bash -l
 #SBATCH -N 1 -n 1
