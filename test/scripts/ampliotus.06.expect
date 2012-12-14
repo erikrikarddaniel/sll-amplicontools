@@ -1,0 +1,10 @@
+Available fields:
+	best_hit_alnlen: Alignment length between the best hit and the type sequence
+	best_hit_identity: The % identity for the best hit compared to the type sequence
+	best_hit_subject: Best hit in taxonomy file
+	best_hit_taxonomy: The taxonomy hierarchy for the best hit
+	clusterlevel: Clustering level in percent identity, e.g. 97 commonly used for species
+	counts: Counts for sequences in individual samples defined by fasta files
+	otu: OTU name
+	seqname: Sequence name for a typical sequence representing an OTU
+	sequence: Sequence for the type sequence

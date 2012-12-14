@@ -1,0 +1,480 @@
+#!/usr/bin/env ruby
+#
+# = NAME
+#
+# ampliotus
+#
+# = SYNOPSIS
+#
+# See below, in opt parser block.
+#
+# = USAGE
+#
+# See below, in opt parser block.
+#
+# = AUTHOR
+#
+# daniel.lundin@scilifelab.se
+
+$VERBOSE = true
+
+require 'optparse'
+
+FORMATS = {
+  'amplisql' => {
+    'head' => :amplisqlhead,
+    'fields' => [],
+    'foot' => :amplisqlfoot,
+    'line' => :amplisqlline,
+    'desc' => 'SQL insert statements that fits our amplicons (RoR) schema',
+    'mandopts' => [ :method_name ]
+  },
+  'simplematrix' => { 
+    'head' => :simplematrixhead, 
+    'fields' => [],
+    'foot' => :emptyhead,
+    'line' => :simplematrixline, 
+    'desc' => 'A matrix of counts for each OTU. Each line starts with an OTU name and is followed by sample counts. Samples are enumerated in alphabetical order based on their fasta file names.',
+    'mandopts' => []
+  },
+  'fasta' => {
+    'head' => :emptyhead,
+    'fields' => [],
+    'foot' => :emptyhead,
+    'line' => :fastaline,
+    'desc' => 'A Fasta file with one sequence per OTU. Currently the sequence is the most common one within a cluster',
+    'mandopts' => []
+  },
+  'freecsv' => {
+    'head' => :freecsvhead,
+    'line' => :freecsvline,
+    'foot' => :emptyhead,
+    'desc' => "Separated values (see --delimiter) using the --fields for a user defined order of fields. If you specify any field that's dependent on blast results, you need to specify --taxonomy",
+    'mandopts' => [ :fields ]
+  },
+  'taxcsv' => {
+    'head' => :freecsvhead,
+    'fields' => [ 'otu', 'seqname', 'sequence', 'best_hit_subject', 'best_hit_taxonomy', 'best_hit_identity', 'best_hit_alnlen', 'counts' ],
+    'foot' => :emptyhead,
+    'line' => :freecsvline,
+    'desc' => "Separated values (see --delimiter) including taxonomic information",
+    'mandopts' => [ :taxfile ]
+  }
+}
+DEFAULT_FORMAT = 'simplematrix'
+
+# Fields used for the freecsv format
+FIELDS = {
+  "otu" => {
+    :desc => "OTU name",
+    :field => :@otuname,
+    :name => "OTU",
+  },
+  "clusterlevel" => {
+    :desc => "Clustering level in percent identity, e.g. 97 commonly used for species",
+    :field => :@clusterlevel,
+    :name => "Cluster level"
+  },
+  "seqname" => {
+    :desc => "Sequence name for a typical sequence representing an OTU",
+    :field => :@seqname,
+    :name => "Seqname"
+  },
+  "sequence" => {
+    :desc => "Sequence for the type sequence",
+    :field => :@sequence,
+    :name => "Sequence"
+  },
+  "best_hit_subject" => {
+    :desc => "Best hit in taxonomy file",
+    :field => :@best_hit_subject,
+    :name => "Best hit"
+  },
+  "best_hit_taxonomy" => {
+    :desc => "The taxonomy hierarchy for the best hit",
+    :field => :@best_hit_taxonomy,
+    :name => "Best tax. hierarchy"
+  },
+  "best_hit_identity" => {
+    :desc => "The % identity for the best hit compared to the type sequence",
+    :field => :@best_hit_identity,
+    :name => "Best hit identity %"
+  },
+  "best_hit_alnlen" => {
+    :desc => "Alignment length between the best hit and the type sequence",
+    :field => :@best_hit_alnlen,
+    :name => "Best hit aln. len."
+  },
+  "counts" => {
+    :desc => "Counts for sequences in individual samples defined by fasta files",
+    :field => :@clustersums,
+    :name => "__SAMPLES__"
+  }
+}
+NO_BLAST_HIT_NAME = 'no blast hit'
+CHARS_NOT_ALLOWED_IN_SQL = /[\.;,-]/
+
+def formats(format = false)
+  if format and FORMATS[format]
+    "#{format}: #{FORMATS[format]['desc']}\n"
+  elsif format and format != ''
+    "Format #{format} not supported\n"
+  else
+    "Supported formats:\n\t" + FORMATS.keys.sort.map { |f| "#{f}#{ f == DEFAULT_FORMAT ? ' * default *' : ''}" }.join("\n\t") + "\n"
+  end
+end
+
+OTU_METHODS_TABLE_INDEX = 0
+OTUS_TABLE_INDEX = 1
+SAMPLES_TABLE_INDEX = 2
+SAMPLE_COUNTS_TABLE_INDEX = 3
+@options = {
+  :dbids => [0, 0, 0, 0],
+  :difference => 0.03,
+  :delimiter => "\t",
+  :format => DEFAULT_FORMAT,
+  :stripsuffixes => /(\.fasta)|(\.fna)$/
+}
+opt_parser = OptionParser.new do |opts|
+  opts.banner = <<BANNER
+ampliotus: Reads an Ampliconnoise FCluster .list file plus a set of fasta 
+  files, one per sample, and outputs matrices. See --formats for available
+  output formats.
+
+  ampliotus --listfile=FILE [options] file0..filen
+BANNER
+
+  opts.on "--dbids=N,N,N,N", "Last id values for otu_methods, otus, samples and sample_counts tables respectively, default: #{@options[:dbids].join(", ")}" do |v|
+    @options[:dbids] = v.split(/\s*,\s*/)
+  end
+
+  opts.on("--delimiter=STRING", "Output field delimiter, default #{@options[:delimiter].sub(/\t/, '"\t"')}") do |v|
+    @options[:delimiter] = v
+  end
+
+  opts.on("--difference=FLOAT", "Difference level to define OTUs at, default #{@options[:difference]}.") do |arg|
+    @options[:difference] = arg.to_f
+  end
+
+  opts.on "--fields[=STRING]", "Sets the order of output fields for the 'freecsv' format, comma-separated without spaces. Without argument it lists available fields" do |v|
+    if v
+      @options[:fields] = v.split(',')
+    else
+      puts "Available fields:\n\t#{FIELDS.keys.sort.map { |fk| "#{fk}: #{FIELDS[fk][:desc]}" }.join("\n\t")}"
+      exit 0
+    end
+  end
+
+  opts.on("--format=format", "Output format, default #{DEFAULT_FORMAT}") do |v| 
+    @options[:format] = v 
+  end
+
+  opts.on("--formats[=v]", "Lists available output formats or, with a format as parameter, writes a description of a format") do |v|
+    puts formats(v)
+    exit 0
+  end
+
+  opts.on("-h", "--help", "This info") do 
+    puts opts
+    exit 0
+  end
+
+  opts.on("--listfile=FILE", ".otu.list file from FCluster") do |v|
+    @options[:listfile] = v
+  end
+
+  opts.on "--method_name=STRING", "Name of clustering method, e.g. ``FCluster'', used by amplisql format" do |v|
+    @options[:method_name] = v
+  end
+
+  opts.on "--percent-id=INT", "Percent identity to define OTUs at, the reverse of --difference" do |arg|
+    @options[:difference] = ( 100 - arg.to_f )/100
+  end
+
+  opts.on "--stripsuffixes=PATTERN", "A regular expression for filename suffixes to strip to produce sample names, default #{@options[:stripsuffixes]}" do |v|
+    @options[:stripsuffixes] = Regexp.new(v)
+  end
+
+  opts.on("--taxfile=FILE", "File containing taxonomy information like what is produced by blast2taxonomy") do |v|
+    @options[:taxfile] = v
+  end
+
+  opts.on("-v", "--verbose", "Be verbose") do |v| 
+    @options[:verbose] = v
+  end
+end
+begin
+  opt_parser.parse!
+  mandatory = FORMATS[@options[:format]]['mandopts'] + [ :listfile ]
+  missing = mandatory.select { |param| @options[param].nil? }
+  unless missing.empty?
+    warn "Missing options: #{missing.map { |m| "--#{m}" }.join(", ")}"
+    warn opt_parser
+    exit 1
+  end
+rescue OptionParser::InvalidOption, OptionParser::MissingArgument
+  warn "#{$!}"
+  warn opt_parser
+  exit 1
+end
+
+@options[:fields] = FORMATS[@options[:format]]['fields'] unless @options[:fields]
+
+@clusterlevel = ( 1 - @options[:difference] ) * 100
+
+# Check the @options[:fields]
+userf = nil
+if @options[:fields].find { |userf| not FIELDS.keys.find { |availf| availf == userf } }
+  warn "Field #{userf} not valid"
+  exit 1
+end
+
+def _opts
+  opts = {}
+  @options.keys.each do |optkey|
+    opts[optkey] = @options[optkey]
+    if opts[optkey].instance_of? Array
+      opts[optkey] = opts[optkey].join(",")
+    end
+    opts[optkey] = opts[optkey].to_s.gsub /\t/, '"\t"'
+  end
+  opts
+end
+
+# Formating methods
+def _csvhead
+  opts = _opts
+  print <<HEADER
+# File generated by ampliotus, call:
+#
+#   ampliotus#{opts.keys.sort { |a,b| a.to_s <=> b.to_s }.map { |opt| " --#{opt}=#{opts[opt]}" }.join("")} #{ARGV.join(" ")}
+#
+# Clusters were defined at the #{ sprintf "%0.2f", @options[:difference] } identity level and the first sequence in
+# each cluster was Blasted against a database to identify a likely taxonomic
+# classification.
+HEADER
+end
+
+def _identity
+  (1 - @options[:difference]) * 100
+end
+
+def _method_name
+  sprintf "%s%d", @options[:method_name], _identity
+end
+
+def amplisqlhead
+  opts = _opts
+  @sample_ids = {}
+  print <<SQL
+-- File generated by ampliotus, call:
+--   ampliotus #{opts.keys.sort { |a,b| a.to_s <=> b.to_s }.map { |opt| " --#{opt}=#{opts[opt]}" }.join("")} #{ARGV.join(" ")}
+--
+INSERT INTO otu_methods(id, otu_method_name, level, created_at, updated_at)
+  VALUES(#{sprintf "%d, '%s', '%d %%'", @options[:dbids][OTU_METHODS_TABLE_INDEX] += 1, _method_name, _identity}, now(), now())
+;
+SQL
+  @samplenames.each do |sname|
+    print <<SQL
+INSERT INTO samples(id, sample_name, created_at, updated_at)
+  VALUES(#{@options[:dbids][SAMPLES_TABLE_INDEX] += 1}, '#{sname}', now(), now())
+;
+SQL
+    @sample_ids[sname] = @options[:dbids][SAMPLES_TABLE_INDEX]
+  end
+end
+
+def amplisqlline
+  print <<SQL
+INSERT INTO otus(id, otu_method_id, otu_name, type_sequence, created_at, updated_at)
+  VALUES(#{@options[:dbids][OTUS_TABLE_INDEX] += 1}, #{@options[:dbids][OTU_METHODS_TABLE_INDEX]}, '#{@otuname}', '#{@sequence}', now(), now())
+;
+SQL
+  puts "COPY sample_counts(id, otu_id, sample_id, count, created_at, updated_at) FROM stdin;"
+  @clustersums.each_with_index do |csum, i|
+    printf "%d\t%d\t%d\t%d\tnow()\tnow()\n", 
+      @options[:dbids][SAMPLE_COUNTS_TABLE_INDEX] += 1, 
+      @options[:dbids][OTUS_TABLE_INDEX], 
+      @sample_ids[@samplenames[i]], 
+      csum
+  end
+  puts '\.'
+end
+
+def amplisqlfoot
+  print <<SQL
+CREATE OR REPLACE VIEW #{_method_name.downcase}_sample_count_matrix AS
+  SELECT om.otu_method_name, om.level, o.id AS otu_id, o.otu_name, o.type_sequence AS otu_type_sequence, #{@samplenames.to_enum(:each_with_index).map { |s,i| "sc#{i}.count AS #{s.gsub(CHARS_NOT_ALLOWED_IN_SQL, '_')}_count" }.join(", ")}
+  FROM otu_methods om JOIN otus o ON om.id = o.otu_method_id JOIN #{@samplenames.to_enum(:each_with_index).map { |s,i| "sample_counts sc#{i} ON o.id = sc#{i}.otu_id JOIN samples s#{i} ON s#{i}.id = sc#{i}.sample_id" }.join(" JOIN ")}
+  WHERE om.otu_method_name = 'FCluster97' AND #{@samplenames.to_enum(:each_with_index).map { |s,i| "s#{i}.sample_name = '#{s}'" }.join(" AND ")}
+;
+SQL
+end
+
+def emptyhead
+end
+
+def fastaline
+  puts ">#{@otuname}"
+  puts @sequence
+end
+
+def freecsvhead
+  _csvhead
+  puts "# #{ @options[:fields].map { |f| ( FIELDS[f][:name] == '__SAMPLES__' ? @samplenames.join(@options[:delimiter]) : "#{FIELDS[f][:name]}" ) }.join(@options[:delimiter]) }"
+end
+
+def freecsvline
+  output = []
+  @options[:fields].each do |field|
+    output << self.instance_variable_get(FIELDS[field][:field])
+  end
+  puts output.join(@options[:delimiter])
+end
+
+def simplematrixhead
+  puts "#otu\t#{@samplenames.join("\t")}"
+end
+
+def simplematrixline
+  puts "#{@otuname}\t#{@clustersums.join("\t")}"
+end
+
+unless FORMATS.keys.find { |f| f == @options[:format] }
+  warn "Format #{@options[:format]} unsupported"
+  warn formats
+  exit 1
+end
+
+# Parse the taxonomy file if we're given one
+@taxonomy = nil
+if @options[:taxfile]
+  begin
+    @taxonomy = {}
+    File.open(@options[:taxfile]).each do |taxline|
+      taxline.chomp!
+      taxline.sub!(/\s*#.*/, '')
+      next if taxline == ''
+      fields = taxline.split(/\t/)
+      @taxonomy[fields[0]] = {
+	:taxonomy => fields[1],
+	:subject => fields[2],
+	:identity => fields[3],
+	:alnlen => fields[4],
+	:evalue => fields[5],
+	:bitscore => fields[6]
+      }
+      # Add a record without the last '_\d+'
+      @taxonomy[fields[0].sub(/_\d+$/, '')] = @taxonomy[fields[0]]
+    end
+  rescue
+    warn "Failed to read taxonomy file (#{@options[:taxfile]}): #{$!}, backtrace:\n\t#{$!.backtrace.join("\n\t")}"
+    exit 2
+  end
+end
+#warn "#{__LINE__}: taxonomy: #{@taxonomy.keys.join(", ")}"
+
+# Parse the listfile and fill an array with clusters
+@clusters = []
+begin
+  File.open(@options[:listfile]).each_with_index do |listline,linenum|
+    listline.chomp!
+    listline.sub!(/\s*#.*/, '')
+    next if listline =~ /^\s*$/
+    fields = listline.split(/\s+/)
+    next unless fields[0].to_f == @options[:difference]
+    fields[2..-1].each do |cluster|
+      @clusters << cluster.split(/\s*,\s*/)
+    end
+  end
+rescue
+  warn "Failed to process listfile '#{@options[:listfile]}': #{$!}, backtrace:\n\t#{$!.backtrace.join("\n\t")}"
+  exit 2
+end
+
+
+( warn "Failed to find any clusters at #{@options[:difference]} difference level"; exit 1 ) unless @clusters.length > 0
+
+# Loop over fasta infiles to determine which sequence names belongs to which sample.
+# A hash keyed with sequence names pointing at sample name (fasta file name) and
+# another in the reverse order will be produced.
+@seqname2sample = {}
+@seqname2sequence = {}
+@sample2seqname = {}
+begin
+  fastafile = nil
+  ARGV.each do |fastafile|
+    @sample2seqname[fastafile] = []
+    warn "Parsing #{fastafile}" if @options[:verbose]
+    if fastafile =~ /.gz$/
+      io = IO.popen("gunzip -c #{fastafile}", "r")
+    elsif fastafile =~ /.bz2$/
+      io = IO.popen("bunzip2 -c #{fastafile}", "r")
+    else
+      io = File.new(fastafile)
+    end
+    n = nil
+    sequence = nil
+    io.each do |fastaline|
+      if fastaline =~ /^>(.*)/
+	@seqname2sequence[n] = sequence if sequence
+	n = $1
+	@seqname2sample[n] = fastafile
+	@sample2seqname[fastafile] << n
+	sequence = ''
+      else
+	sequence += fastaline.chomp
+      end
+    end
+    @seqname2sequence[n] = sequence if sequence
+  end
+rescue
+  warn "Failed to process fastafile '#{fastafile}': #{$!}, backtrace:\n\t#{$!.backtrace.join("\n\t")}"
+end
+#warn "#{__LINE__}: @seqname2sequence: #{ @seqname2sequence.inspect }"
+
+#warn "#{__LINE__}: @seqname2sequence: #{@seqname2sequence.inspect}"
+
+# Print out the results
+@samplenames = @sample2seqname.keys.map { |s| s.sub(@options[:stripsuffixes], '') }.sort
+self.method(FORMATS[@options[:format]]['head']).call
+@clusters.each_with_index do |cluster, clusternum|
+  sumpersample = {}
+  @best_hit_subject = NO_BLAST_HIT_NAME
+  @best_hit_taxonomy = 'no taxon hierarchy found'
+  @best_hit_identity = 'NA'
+  @best_hit_alnlen = 'NA'
+  @sample2seqname.keys.each { |sample| sumpersample[sample] = 0 }
+  seqcounts = {}
+  @blastresult = {
+    :taxonomy => 'no taxon hierarchy found',
+    :subject => NO_BLAST_HIT_NAME,
+    :identity => 'NA',
+    :alnlen => 'NA',
+    :evalue => 'NA',
+    :bitscore => 'NA'
+  }
+  @seqname = NO_BLAST_HIT_NAME
+  cluster.each do |seqname|
+    ( warn "Can't find #{seqname} in fasta files" if @options[:verbose] ; next ) unless @seqname2sample[seqname]
+    if @taxonomy and @taxonomy[seqname] and @seqname == NO_BLAST_HIT_NAME
+      @seqname = seqname
+      @blastresult = @taxonomy[seqname]
+      @best_hit_subject = @blastresult[:subject]
+      @best_hit_taxonomy = @blastresult[:taxonomy]
+      @best_hit_identity = @blastresult[:identity]
+      @best_hit_alnlen = @blastresult[:alnlen]
+    end
+    sumpersample[@seqname2sample[seqname]] += seqname.split(/_/)[-1].to_i		# Ampliconnoise sequence names contain the number of a particular sequence as the last of a '_' separated set of fields
+    seq = @seqname2sequence[seqname]
+    seqcounts[seq] = 0 unless seqcounts[seq]
+    seqcounts[seq] += 1
+  end
+  @sequence = seqcounts.keys.sort_by { |a,b| [ -seqcounts[a], a ]  }[0]			# Set the type sequence to the most common (also sort by sequence to make it reproducible when we have more than one most common)
+  @clustersums = sumpersample.keys.sort.map { |c| sumpersample[c] }
+  if sumpersample.values.find { |s| s > 0 }
+    @otuname = sprintf("OTU%d_%0#{( @clusters.length > 10000000 ? Math.log10(@clusters.length).to_i + 1 : 6)}d", (1-@options[:difference]) * 100, clusternum)
+    self.method(FORMATS[@options[:format]]['line']).call
+  end
+end
+self.method(FORMATS[@options[:format]]['foot']).call
