@@ -3,8 +3,20 @@ SILVA_SSU_REF = $(SILVA_DIR)/SSURef.arb
 
 all_silvas: $(subst .fasta,.silva_ssuref.arb,$(wildcard *.otuseeds.fasta))
 
+all_taxonomies: $(subst .silva_ssuref.sinalog,.taxonomy,$(wildcard *.silva_ssuref.sinalog))
+
 all_silvas.sbatch: $(M4_DIRECTORY)/single_make_target.sbatch.m4
 	@$(SBATCH_M4_SINGLE_MAKE_TARGET_CORE_CALL)
+
+%.silva_ssuref.sinalog: %.silva_ssuref.arb
+
+%.taxonomy: %.silvataxonomy
+	ln -s $< $@
+
+.SECONDARY:
+
+%.silvataxonomy: %.silva_ssuref.sinalog
+	sina2taxonomy $< > $@
 
 %.silva_ssuref.arb: %.fasta $(SILVA_SSU_REF)
 	sina -i $< \

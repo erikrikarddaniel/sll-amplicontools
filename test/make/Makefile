@@ -5,9 +5,9 @@ CHECK = if [ ` $(DIFF) | wc -l ` -eq 0 ]; then echo "*** $@ OK ***"; else echo "
 all: amplitools.usearch.makefile
 
 clean:
-	rm -f *.out
+	@rm -f */*.out
 
-amplitools.usearch.makefile: amplitools.usearch.makefile.00 amplitools.usearch.makefile.01 amplitools.usearch.makefile.02
+amplitools.usearch.makefile: amplitools.usearch.makefile.00 amplitools.usearch.makefile.01 amplitools.usearch.makefile.02 amplitools.usearch.makefile.03
 
 amplitools.usearch.makefile.00:
 	@cd $@.d; make -f $@.makefile -n create_links > $@.out
@@ -23,4 +23,8 @@ amplitools.usearch.makefile.01:
 amplitools.usearch.makefile.02:
 	@cd $@.d; make -f $@.makefile -n all_silvas > $@.out
 	@cd $@.d; make -f $@.makefile all_silvas.sbatch >> $@.out && cat all_silvas.sbatch >> $@.out && rm all_silvas.sbatch
+	@cd $@.d; $(CHECK)
+
+amplitools.usearch.makefile.03:
+	@cd $@.d; make -f $@.makefile -n all_taxonomies > $@.out
 	@cd $@.d; $(CHECK)
