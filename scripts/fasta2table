@@ -1,0 +1,85 @@
+#!/usr/bin/env ruby
+#
+# = NAME
+#
+# fasta2table
+#
+# = SYNOPSIS
+#
+# See below, in opt parser block.
+#
+# = USAGE
+#
+# See below, in opt parser block.
+#
+# = AUTHOR
+#
+# daniel.lundin@scilifelab.se
+
+$VERBOSE = true
+
+require 'optparse'
+
+@options = {
+  :delimiter => "\t"	# Not yet implemented as option
+}
+opt_parser = OptionParser.new do |opts|
+  opts.banner = <<BANNER
+fasta2table: Converts a fasta file to a table, i.e. a file with one column for names another for sequences.
+    fasta2table [options] file0..filen
+BANNER
+
+  opts.on "-h", "--help", "This info"  do 
+    puts opts
+    exit 0
+  end
+
+  opts.on "-v", "--verbose", "Be verbose"  do |v| 
+    @options[:verbose] = v 
+  end
+end
+begin
+  opt_parser.parse!
+  mandatory = [ ]	# Fill in with mandatory option names (i.e. starting with :)
+  missing = mandatory.select { |param| @options[param].nil? }
+  unless missing.empty?
+    warn "Missing options: #{missing.map { |m| "--#{m}" }.join(", ")}"
+    warn opt_parser
+    exit 1
+  end
+rescue OptionParser::InvalidOption, OptionParser::MissingArgument
+  warn "#{$!}"
+  warn opt_parser
+  exit 1
+end
+
+# Loop over infiles
+begin
+  file = nil
+  ARGV.each do |file|
+    if file == '-'
+      warn "Parsing STDIN" if @options[:verbose]
+      io = STDIN
+    else
+      warn "Parsing #{file}" if @options[:verbose]
+      if file =~ /.gz$/
+	io = IO.popen("gunzip -c #{file}", "r")
+      elsif file =~ /.bz2$/
+	io = IO.popen("bunzip2 -c #{file}", "r")
+      else
+	io = File.new(file)
+      end
+    end
+    name = ''
+    io.each do |line|
+      line.chomp!
+      if line =~ />(.*)/
+	name = $1
+      else
+	puts name + @options[:delimiter] + line
+      end
+    end
+  end
+rescue
+  warn "Failed to process file '#{file}': #{$!}, backtrace:\n\t#{$!.backtrace.join("\n\t")}"
+end

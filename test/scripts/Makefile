@@ -8,7 +8,7 @@ GREP_CHECK = pattern=`cat $@.expect`; if [ `grep "$$pattern" $@.out | wc -l` -gt
 
 XML_CHECK =
 
-all: amplifastasort ampliotus 
+all: amplifastasort ampliotus fasta2table
 
 clean: cleanraw cleandatsample
 	@rm -rf *.out *.tmp err *.newname.tar* otutable2taxonsplit.*.*.otutable otutablesumbyrank.*.rank* sam2meganannot.*.out*
@@ -22,6 +22,8 @@ cleandatsample:
 amplifastasort: amplifastasort.00 amplifastasort.01
 
 ampliotus: ampliotus.00 ampliotus.01 ampliotus.02 ampliotus.03 ampliotus.04 ampliotus.05 ampliotus.06 ampliotus.07 ampliotus.08 ampliotus.09 ampliotus.10 ampliotus.11 ampliotus.12
+
+fasta2table: fasta2table.00
 
 amplifastasort.00:
 	@../../scripts/amplifastasort $@.fasta > $@.out
@@ -82,4 +84,8 @@ ampliotus.11:
 
 ampliotus.12:
 	@../../scripts/ampliotus --format=freecsv --fields=otu,clusterlevel,counts --percent-id=97 --listfile=$@.list $@.?.fasta > $@.out
+	@$(CHECK)
+
+fasta2table.00:
+	@../../scripts/fasta2table $@.fasta > $@.out
 	@$(CHECK)
