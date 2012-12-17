@@ -71,14 +71,20 @@ begin
       end
     end
     name = ''
+    seq = ''
     io.each do |line|
       line.chomp!
       if line =~ />(.*)/
+	if name != ''
+	  puts name + @options[:delimiter] + seq
+	  seq = ''
+	end
 	name = $1
       else
-	puts name + @options[:delimiter] + line
+	seq += line
       end
     end
+    puts name + @options[:delimiter] + seq
   end
 rescue
   warn "Failed to process file '#{file}': #{$!}, backtrace:\n\t#{$!.backtrace.join("\n\t")}"

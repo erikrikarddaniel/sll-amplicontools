@@ -23,7 +23,7 @@ amplifastasort: amplifastasort.00 amplifastasort.01
 
 ampliotus: ampliotus.00 ampliotus.01 ampliotus.02 ampliotus.03 ampliotus.04 ampliotus.05 ampliotus.06 ampliotus.07 ampliotus.08 ampliotus.09 ampliotus.10 ampliotus.11 ampliotus.12
 
-fasta2table: fasta2table.00
+fasta2table: fasta2table.00 fasta2table.01
 
 amplifastasort.00:
 	@../../scripts/amplifastasort $@.fasta > $@.out
@@ -87,5 +87,9 @@ ampliotus.12:
 	@$(CHECK)
 
 fasta2table.00:
+	@../../scripts/fasta2table $@.fasta > $@.out
+	@$(CHECK)
+
+fasta2table.01:
 	@../../scripts/fasta2table $@.fasta > $@.out
 	@$(CHECK)
