@@ -12,8 +12,8 @@ all_otuseeds: $(subst .uc.,.otuseeds.,$(wildcard *.uc.fasta))
 
 %.uc: %.sort.fasta
 	for n in $(CLUSTER_LEVELS); do \
-	  n=$(basename $@).`echo "$$n * 100" | bc -l |sed 's/\..*//'`.uc; \
-	  usearch --usersort --cluster_smallmem $< -id $$n --uc $$name --centroids $$n.fasta; \
+	  name=$(basename $@).`echo "$$n * 100" | bc -l |sed 's/\..*//'`.uc; \
+	  usearch --usersort --cluster_smallmem $< -id $$n --uc $$name --centroids $$name.fasta; \
 	done
 
 %.otu.list: $(wildcard *.uc)

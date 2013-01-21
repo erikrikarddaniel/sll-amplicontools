@@ -4,8 +4,8 @@ make[1]: Leaving directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/t
 make[1]: Entering directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make/amplitools.usearch.makefile.00.d'
 amplifastasort amplitools.usearch.makefile.00.fasta > amplitools.usearch.makefile.00.sort.fasta
 for n in 1.00 0.99 0.98 0.97 0.96 0.95; do \
-	  n=amplitools.usearch.makefile.00.`echo "$n * 100" | bc -l |sed 's/\..*//'`.uc; \
-	  usearch --usersort --cluster_smallmem amplitools.usearch.makefile.00.sort.fasta -id $n --uc $name --centroids $n.fasta; \
+	  name=amplitools.usearch.makefile.00.`echo "$n * 100" | bc -l |sed 's/\..*//'`.uc; \
+	  usearch --usersort --cluster_smallmem amplitools.usearch.makefile.00.sort.fasta -id $n --uc $name --centroids $name.fasta; \
 	done
 rm amplitools.usearch.makefile.00.sort.fasta
 make[1]: Leaving directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make/amplitools.usearch.makefile.00.d'
