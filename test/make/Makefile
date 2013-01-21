@@ -2,12 +2,19 @@ DIFF = grep -v "^[ ]*$$" $@.out | diff $@.expect -
 
 CHECK = if [ ` $(DIFF) | wc -l ` -eq 0 ]; then echo "*** $@ OK ***"; else echo "*** $@ FAILED ***"; echo "Here's a diff: "; $(DIFF); exit 1; fi
 
-all: amplitools.usearch.makefile
+all: amplitools.sinasilva.makefile amplitools.usearch.makefile
 
 clean:
 	@rm -f */*.out
 
+amplitools.sinasilva.makefile: amplitools.sinasilva.makefile.00
+
 amplitools.usearch.makefile: amplitools.usearch.makefile.00 amplitools.usearch.makefile.01 amplitools.usearch.makefile.02 amplitools.usearch.makefile.03
+
+amplitools.sinasilva.makefile.00:
+	@cd $@.d; make -f $@.makefile -n $@.otuseeds.silva_ssuref.arb > $@.out
+	@cd $@.d; make -f $@.makefile all_silvas.sbatch >> $@.out && cat all_silvas.sbatch >> $@.out && rm all_silvas.sbatch
+	@cd $@.d; $(CHECK)
 
 amplitools.usearch.makefile.00:
 	@cd $@.d; make -f $@.makefile -n create_links > $@.out

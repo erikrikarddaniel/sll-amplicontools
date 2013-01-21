@@ -1,0 +1,29 @@
+make[1]: Entering directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make/amplitools.sinasilva.makefile.00.d'
+sina -i amplitools.sinasilva.makefile.00.otuseeds.fasta \
+	  -o amplitools.sinasilva.makefile.00.otuseeds.silva_ssuref.arb \
+	  --ptdb /proj/b2010008/nobackup/data/silva/SSURef.arb \
+	  --search \
+	  --search-db /proj/b2010008/nobackup/data/silva/SSURef.arb \
+	  --lca-fields tax_slv \
+	  --log-file amplitools.sinasilva.makefile.00.otuseeds.silva_ssuref.sinalog
+killall arb_pt_server
+make[1]: Leaving directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make/amplitools.sinasilva.makefile.00.d'
+make[1]: Entering directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make/amplitools.sinasilva.makefile.00.d'
+make[1]: Leaving directory `/bubo/glob/g1/daniel/private/dev/sll-amplicontools/test/make/amplitools.sinasilva.makefile.00.d'
+#!/bin/bash -l
+#SBATCH -N 1 -n 8
+#SBATCH -t 10-00:00:00
+#SBATCH -J test-all_silvas
+#SBATCH -A testproject
+#SBATCH -p node
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=your.email@address.se
+#SBATCH -C mem72GB
+echo "-------------------------------------------------------------------------"
+echo "`date`: Starting job test-all_silvas"
+module load intel openmpi blast
+export LC_ALL=C
+make all_silvas
+rc=$?
+echo "`date`: Done test-all_silvas, rc: $rc"
+exit $rc

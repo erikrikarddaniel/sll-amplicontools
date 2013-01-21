@@ -6,7 +6,7 @@ all_silvas: $(subst .fasta,.silva_ssuref.arb,$(wildcard *.otuseeds.fasta))
 all_taxonomies: $(subst .silva_ssuref.sinalog,.taxonomy,$(wildcard *.silva_ssuref.sinalog))
 
 all_silvas.sbatch: $(M4_DIRECTORY)/single_make_target.sbatch.m4
-	@$(SBATCH_M4_SINGLE_MAKE_TARGET_CORE_CALL)
+	@$(SBATCH_M4_SINGLE_MAKE_TARGET_SINGLE_NODE_CALL_FAT)
 
 %.silva_ssuref.sinalog: %.silva_ssuref.arb
 
